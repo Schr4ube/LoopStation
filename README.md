@@ -1,6 +1,6 @@
-# LoopStation Live (Prototype+)
+# LoopStation Live (Electron)
 
-Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt**.
+Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt** – jetzt als **lokal laufende Electron-App**.
 
 ## Enthaltene Funktionen
 - 5 unabhängige Tracks
@@ -14,7 +14,13 @@ Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität 
   - `1..5`: Track Play/Stop toggeln
   - `Leertaste`: Stop All
 
-## Start
+## Lokal als Electron-App starten
+```bash
+npm install
+npm run start
+```
+
+## Alternative (Browser)
 ```bash
 python3 -m http.server 8080
 ```
@@ -29,4 +35,4 @@ Session Save/Load speichert aktuell nur **Einstellungen und Status**, nicht die 
 - Persistente Audio-Sessions (Import/Export)
 - MIDI Learn + MIDI Clock In/Out
 - Effektketten (Input FX, Track FX, Master FX)
-- Windows Standalone Packaging über Tauri/Electron
+- Installer/Build-Pipeline für Windows (`electron-builder`)

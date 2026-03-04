@@ -1,0 +1,13 @@
+{
+  "name": "loopstation-live-electron",
+  "version": "0.1.0",
+  "description": "Local Electron wrapper for LoopStation Live",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
