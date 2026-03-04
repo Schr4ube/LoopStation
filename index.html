@@ -18,6 +18,14 @@
             <input id="bpm" type="number" value="120" min="60" max="200" />
           </label>
           <button id="metronome">Metronom: Aus</button>
+          <button id="playAll">Alle Play</button>
+          <button id="stopAll">Alle Stop</button>
+          <label>
+            Master
+            <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="0.9" />
+          </label>
+          <button id="saveSession">Session speichern</button>
+          <button id="loadSession">Session laden</button>
         </div>
       </header>
 
@@ -26,7 +34,7 @@
       <section id="tracks" class="track-grid"></section>
 
       <footer class="glass footer">
-        <p>Windows Standalone Pfad: Diese Oberfläche kann direkt in Tauri oder Electron verpackt werden.</p>
+        <p>Neue Features: Overdub, Undo, Mute, Play/Stop All, Session Save/Load und Keyboard Shortcuts (1-5 Tracks, Leertaste Stop All).</p>
       </footer>
     </main>
 
@@ -38,8 +46,11 @@
         </header>
         <div class="track-controls">
           <button data-action="record" class="danger">REC</button>
+          <button data-action="overdub">OD</button>
           <button data-action="play">PLAY</button>
           <button data-action="stop">STOP</button>
+          <button data-action="mute">MUTE</button>
+          <button data-action="undo">UNDO</button>
           <button data-action="clear">CLEAR</button>
         </div>
         <label class="volume-label">Lautstärke

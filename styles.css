@@ -27,7 +27,7 @@ body {
 }
 
 .app {
-  width: min(1200px, 94vw);
+  width: min(1300px, 94vw);
   margin: 24px auto;
   display: grid;
   gap: 16px;
@@ -52,7 +52,7 @@ h1 { margin: 0; font-size: 1.4rem; }
 .transport {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -76,7 +76,7 @@ button:hover { transform: translateY(-1px); }
 
 .track-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
 }
 
@@ -101,7 +101,7 @@ button:hover { transform: translateY(-1px); }
 
 .track-controls {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
@@ -120,3 +120,4 @@ button:hover { transform: translateY(-1px); }
 .pill.rec { background: rgba(255,79,123,0.25); }
 .pill.play { background: rgba(47,210,128,0.25); }
 .pill.stop { background: rgba(255,255,255,0.15); }
+.pill.muted { outline: 1px solid rgba(255, 196, 0, 0.8); }

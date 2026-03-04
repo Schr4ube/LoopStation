@@ -1,15 +1,18 @@
-# LoopStation Live (Prototype)
+# LoopStation Live (Prototype+)
 
-Ein schneller Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt**.
+Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt**.
 
 ## Enthaltene Funktionen
 - 5 unabhängige Tracks
 - Audio aktivieren (Mikrofon)
-- Pro Track: Record, Play, Stop, Clear
-- BPM-Einstellung
-- Einfaches Metronom
-- Lautstärke pro Track
-- Modernes, performantes Frontend (HTML/CSS/JS)
+- Pro Track: Record, Overdub, Play, Stop, Mute, Undo, Clear
+- BPM-Einstellung + Metronom
+- Lautstärke pro Track + Master Volume
+- Play All / Stop All
+- Session Save/Load (Settings + Track-Status in `localStorage`)
+- Keyboard Shortcuts:
+  - `1..5`: Track Play/Stop toggeln
+  - `Leertaste`: Stop All
 
 ## Start
 ```bash
@@ -17,15 +20,13 @@ python3 -m http.server 8080
 ```
 Dann öffnen: `http://localhost:8080`
 
-## Hinweis zum Ziel "Windows Standalone"
-Dieser Prototyp ist bewusst als schnelle Basis umgesetzt. Für ein echtes Standalone auf Windows mit Installer sind die nächsten sinnvollen Schritte:
-1. UI in Tauri/Electron einbetten
-2. Audio-Engine in Rust/C++ auslagern (sample-genaues Scheduling)
-3. Latenz-/Stress-Tests für <10ms Ziel
+## Wichtiger Hinweis
+Session Save/Load speichert aktuell nur **Einstellungen und Status**, nicht die Audio-PCM-Daten der Loops. Für vollständiges Session-Recall wäre ein persistentes Audioformat (z. B. WAV/OPUS + Projektdatei) der nächste Schritt.
 
-## Nächste technische Schritte
-- Quantisierung sample-genau statt auf Record-Länge
-- Echte Overdub-Engine (Additiv statt Replace)
-- Undo/Redo Buffer-Historie
-- MIDI-Mapping + Clock In/Out
-- Session Save/Load
+## Roadmap Richtung RC-505 MK II
+- Sample-genaue Quantisierung und globaler Transport
+- Mehrstufiges Undo/Redo
+- Persistente Audio-Sessions (Import/Export)
+- MIDI Learn + MIDI Clock In/Out
+- Effektketten (Input FX, Track FX, Master FX)
+- Windows Standalone Packaging über Tauri/Electron
