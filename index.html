@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LoopStation Live</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow"></div>
+    <main class="app">
+      <header class="topbar glass">
+        <h1>LoopStation Live</h1>
+        <div class="transport">
+          <button id="initAudio" class="primary">Audio starten</button>
+          <label>
+            BPM
+            <input id="bpm" type="number" value="120" min="60" max="200" />
+          </label>
+          <button id="metronome">Metronom: Aus</button>
+          <button id="playAll">Alle Play</button>
+          <button id="stopAll">Alle Stop</button>
+          <label>
+            Master
+            <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="0.9" />
+          </label>
+          <button id="saveSession">Session speichern</button>
+          <button id="loadSession">Session laden</button>
+        </div>
+      </header>
+
+      <section class="master-fx glass">
+        <h3>Master FX Kette</h3>
+        <label>Filter Cutoff
+          <input id="masterFilterCutoff" type="range" min="200" max="16000" step="10" value="16000" />
+        </label>
+        <label>Delay Mix
+          <input id="masterDelayMix" type="range" min="0" max="0.7" step="0.01" value="0.12" />
+        </label>
+        <label>Delay Time
+          <input id="masterDelayTime" type="range" min="0.05" max="0.7" step="0.01" value="0.22" />
+        </label>
+        <label>Feedback
+          <input id="masterDelayFeedback" type="range" min="0" max="0.8" step="0.01" value="0.32" />
+        </label>
+      </section>
+
+      <section id="status" class="status glass">Bereit. Audio starten und Mikrofon freigeben.</section>
+
+      <section id="tracks" class="track-grid"></section>
+
+      <footer class="glass footer">
+        <p>Mit FX-Ketten: pro Track Filter+Delay und globale Master FX-Kette inklusive Session-Recall.</p>
+      </footer>
+    </main>
+
+    <template id="trackTemplate">
+      <article class="track glass">
+        <header>
+          <h2></h2>
+          <span class="pill">Leer</span>
+        </header>
+        <div class="track-controls">
+          <button data-action="record" class="danger">REC</button>
+          <button data-action="overdub">OD</button>
+          <button data-action="play">PLAY</button>
+          <button data-action="stop">STOP</button>
+          <button data-action="mute">MUTE</button>
+          <button data-action="undo">UNDO</button>
+          <button data-action="clear">CLEAR</button>
+        </div>
+        <div class="track-fx">
+          <label>Track Filter
+            <input data-action="filterCutoff" type="range" min="200" max="16000" step="10" value="14000" />
+          </label>
+          <label>Track Delay Mix
+            <input data-action="delayMix" type="range" min="0" max="0.7" step="0.01" value="0.08" />
+          </label>
+        </div>
+        <label class="volume-label">Lautstärke
+          <input data-action="volume" type="range" min="0" max="1" step="0.01" value="0.9" />
+        </label>
+      </article>
+    </template>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
