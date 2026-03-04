@@ -29,12 +29,28 @@
         </div>
       </header>
 
+      <section class="master-fx glass">
+        <h3>Master FX Kette</h3>
+        <label>Filter Cutoff
+          <input id="masterFilterCutoff" type="range" min="200" max="16000" step="10" value="16000" />
+        </label>
+        <label>Delay Mix
+          <input id="masterDelayMix" type="range" min="0" max="0.7" step="0.01" value="0.12" />
+        </label>
+        <label>Delay Time
+          <input id="masterDelayTime" type="range" min="0.05" max="0.7" step="0.01" value="0.22" />
+        </label>
+        <label>Feedback
+          <input id="masterDelayFeedback" type="range" min="0" max="0.8" step="0.01" value="0.32" />
+        </label>
+      </section>
+
       <section id="status" class="status glass">Bereit. Audio starten und Mikrofon freigeben.</section>
 
       <section id="tracks" class="track-grid"></section>
 
       <footer class="glass footer">
-        <p>Neue Features: Overdub, Undo, Mute, Play/Stop All plus vollständiger Session-Recall mit WAV + Projektdatei in Electron.</p>
+        <p>Mit FX-Ketten: pro Track Filter+Delay und globale Master FX-Kette inklusive Session-Recall.</p>
       </footer>
     </main>
 
@@ -52,6 +68,14 @@
           <button data-action="mute">MUTE</button>
           <button data-action="undo">UNDO</button>
           <button data-action="clear">CLEAR</button>
+        </div>
+        <div class="track-fx">
+          <label>Track Filter
+            <input data-action="filterCutoff" type="range" min="200" max="16000" step="10" value="14000" />
+          </label>
+          <label>Track Delay Mix
+            <input data-action="delayMix" type="range" min="0" max="0.7" step="0.01" value="0.08" />
+          </label>
         </div>
         <label class="volume-label">Lautstärke
           <input data-action="volume" type="range" min="0" max="1" step="0.01" value="0.9" />

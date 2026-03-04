@@ -1,6 +1,6 @@
 # LoopStation Live (Electron)
 
-Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt** – als lokal laufende Electron-App.
+Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität** – als lokal laufende Electron-App.
 
 ## Enthaltene Funktionen
 - 5 unabhängige Tracks
@@ -8,11 +8,14 @@ Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität 
 - Pro Track: Record, Overdub, Play, Stop, Mute, Undo, Clear
 - BPM-Einstellung + Metronom
 - Lautstärke pro Track + Master Volume
+- **Effektketten**:
+  - Pro Track: Filter + Delay-Mix
+  - Master: Filter, Delay-Mix, Delay-Time, Feedback
 - Play All / Stop All
-- **Vollständiger Session Recall in Electron**:
-  - Projektdatei als JSON (z. B. `my-set.json`)
-  - Persistente Audio-Dateien als WAV pro Track (`audio/track-1.wav` ...)
-  - Laden stellt Loops + Mixer-Einstellungen wieder her
+- Vollständiger Session Recall in Electron:
+  - Projektdatei als JSON
+  - Persistente WAV-Dateien pro Track (`audio/track-1.wav` ...)
+  - Laden stellt Loops + Mixer- und FX-Einstellungen wieder her
 - Keyboard Shortcuts:
   - `1..5`: Track Play/Stop toggeln
   - `Leertaste`: Stop All
@@ -33,11 +36,4 @@ python3 -m http.server 8080
 ```
 Dann öffnen: `http://localhost:8080`
 
-Im Browser ohne Electron werden aus Sicherheitsgründen weiterhin nur Settings über `localStorage` gespeichert (kein WAV-Dateizugriff).
-
-## Roadmap Richtung RC-505 MK II
-- Sample-genaue Quantisierung und globaler Transport
-- Mehrstufiges Undo/Redo
-- MIDI Learn + MIDI Clock In/Out
-- Effektketten (Input FX, Track FX, Master FX)
-- Installer/Build-Pipeline für Windows (`electron-builder`)
+Im Browser ohne Electron werden nur Settings inkl. FX in `localStorage` gespeichert (kein WAV-Dateizugriff).

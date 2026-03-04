@@ -1,5 +1,5 @@
 const trackCount = 5;
-const SESSION_KEY = 'loopstation-live-session-v2';
+const SESSION_KEY = 'loopstation-live-session-v3';
 
 const tracksEl = document.getElementById('tracks');
 const trackTemplate = document.getElementById('trackTemplate');
@@ -13,12 +13,17 @@ const masterVolumeEl = document.getElementById('masterVolume');
 const saveSessionBtn = document.getElementById('saveSession');
 const loadSessionBtn = document.getElementById('loadSession');
 
+const masterFilterCutoffEl = document.getElementById('masterFilterCutoff');
+const masterDelayMixEl = document.getElementById('masterDelayMix');
+const masterDelayTimeEl = document.getElementById('masterDelayTime');
+const masterDelayFeedbackEl = document.getElementById('masterDelayFeedback');
+
 let audioCtx;
 let mediaStream;
 let metronomeInterval = null;
 let metronomeOn = false;
-let masterGain;
 
+let masterChain;
 const hasNativeProjectIO = Boolean(window.loopstationFiles?.saveProject && window.loopstationFiles?.loadProject);
 
 const state = Array.from({ length: trackCount }, (_, index) => ({
@@ -30,38 +35,127 @@ const state = Array.from({ length: trackCount }, (_, index) => ({
   source: null,
   buffer: null,
   previousBuffer: null,
-  gain: null,
   volume: 0.9,
   loopDuration: 0,
   isMuted: false,
+  fx: {
+    filterCutoff: 14000,
+    delayMix: 0.08,
+    delayTime: 0.2,
+    delayFeedback: 0.28,
+  },
+  nodes: null,
   refresh: null,
   controls: null,
 }));
 
 const setStatus = (message) => (statusEl.textContent = message);
 
-function ensureAudioGraph() {
-  if (!audioCtx) return;
-  if (!masterGain) {
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = Number(masterVolumeEl.value);
-    masterGain.connect(audioCtx.destination);
-  }
+function createDelayChain(inputNode, outputNode, opts) {
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = opts.filterCutoff;
+
+  const delay = audioCtx.createDelay(1.0);
+  delay.delayTime.value = opts.delayTime;
+
+  const feedback = audioCtx.createGain();
+  feedback.gain.value = opts.delayFeedback;
+
+  const dry = audioCtx.createGain();
+  const wet = audioCtx.createGain();
+
+  dry.gain.value = 1 - opts.delayMix;
+  wet.gain.value = opts.delayMix;
+
+  inputNode.connect(filter);
+  filter.connect(dry);
+  filter.connect(delay);
+  delay.connect(wet);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  dry.connect(outputNode);
+  wet.connect(outputNode);
+
+  return { filter, delay, feedback, dry, wet };
 }
 
-function ensureTrackGain(track) {
-  if (!track.gain) {
-    track.gain = audioCtx.createGain();
-    track.gain.connect(masterGain);
-  }
-  track.gain.gain.value = track.isMuted ? 0 : track.volume;
+function ensureMasterChain() {
+  if (!audioCtx || masterChain) return;
+
+  const input = audioCtx.createGain();
+  const output = audioCtx.createGain();
+  output.gain.value = Number(masterVolumeEl.value);
+
+  const delayChain = createDelayChain(input, output, {
+    filterCutoff: Number(masterFilterCutoffEl.value),
+    delayMix: Number(masterDelayMixEl.value),
+    delayTime: Number(masterDelayTimeEl.value),
+    delayFeedback: Number(masterDelayFeedbackEl.value),
+  });
+
+  output.connect(audioCtx.destination);
+
+  masterChain = {
+    input,
+    output,
+    ...delayChain,
+    fx: {
+      filterCutoff: Number(masterFilterCutoffEl.value),
+      delayMix: Number(masterDelayMixEl.value),
+      delayTime: Number(masterDelayTimeEl.value),
+      delayFeedback: Number(masterDelayFeedbackEl.value),
+    },
+  };
+}
+
+function applyMasterFxSettings() {
+  if (!masterChain) return;
+  masterChain.fx.filterCutoff = Number(masterFilterCutoffEl.value);
+  masterChain.fx.delayMix = Number(masterDelayMixEl.value);
+  masterChain.fx.delayTime = Number(masterDelayTimeEl.value);
+  masterChain.fx.delayFeedback = Number(masterDelayFeedbackEl.value);
+
+  masterChain.filter.frequency.value = masterChain.fx.filterCutoff;
+  masterChain.delay.delayTime.value = masterChain.fx.delayTime;
+  masterChain.feedback.gain.value = masterChain.fx.delayFeedback;
+  masterChain.dry.gain.value = 1 - masterChain.fx.delayMix;
+  masterChain.wet.gain.value = masterChain.fx.delayMix;
+}
+
+function ensureTrackNodes(track) {
+  if (track.nodes) return;
+  ensureMasterChain();
+
+  const input = audioCtx.createGain();
+  const output = audioCtx.createGain();
+  output.gain.value = track.isMuted ? 0 : track.volume;
+
+  const delayChain = createDelayChain(input, output, track.fx);
+  output.connect(masterChain.input);
+
+  track.nodes = {
+    input,
+    output,
+    ...delayChain,
+  };
+}
+
+function applyTrackFx(track) {
+  ensureTrackNodes(track);
+  track.nodes.filter.frequency.value = track.fx.filterCutoff;
+  track.nodes.delay.delayTime.value = track.fx.delayTime;
+  track.nodes.feedback.gain.value = track.fx.delayFeedback;
+  track.nodes.dry.gain.value = 1 - track.fx.delayMix;
+  track.nodes.wet.gain.value = track.fx.delayMix;
+  track.nodes.output.gain.value = track.isMuted ? 0 : track.volume;
 }
 
 async function startCapture() {
   if (!audioCtx) {
     audioCtx = new AudioContext({ latencyHint: 'interactive' });
   }
-  ensureAudioGraph();
+  ensureMasterChain();
 
   if (!mediaStream) {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -87,12 +181,13 @@ function stopTrack(track) {
 function playTrack(track, syncTime = null) {
   if (!audioCtx || !track.buffer) return;
   stopTrack(track);
-  ensureTrackGain(track);
+  ensureTrackNodes(track);
+  applyTrackFx(track);
 
   const source = audioCtx.createBufferSource();
   source.buffer = track.buffer;
   source.loop = true;
-  source.connect(track.gain);
+  source.connect(track.nodes.input);
   source.start(syncTime ?? audioCtx.currentTime);
 
   track.source = source;
@@ -178,9 +273,7 @@ function encodeWavFromAudioBuffer(buffer) {
   const view = new DataView(wavBuffer);
 
   const writeString = (offset, value) => {
-    for (let i = 0; i < value.length; i++) {
-      view.setUint8(offset + i, value.charCodeAt(i));
-    }
+    for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
   };
 
   writeString(0, 'RIFF');
@@ -234,6 +327,7 @@ function createProjectPayload() {
       loopDuration: track.loopDuration,
       hasAudio,
       audioFile: hasAudio ? `track-${track.id}.wav` : null,
+      fx: track.fx,
     };
   });
 
@@ -248,33 +342,57 @@ function createProjectPayload() {
   return {
     bpm: Number(bpmEl.value),
     masterVolume: Number(masterVolumeEl.value),
+    masterFx: masterChain ? masterChain.fx : null,
     tracks,
     audioFiles,
   };
 }
 
 async function saveSessionAsProject() {
+  const fallbackPayload = {
+    bpm: Number(bpmEl.value),
+    masterVolume: Number(masterVolumeEl.value),
+    masterFx: {
+      filterCutoff: Number(masterFilterCutoffEl.value),
+      delayMix: Number(masterDelayMixEl.value),
+      delayTime: Number(masterDelayTimeEl.value),
+      delayFeedback: Number(masterDelayFeedbackEl.value),
+    },
+    tracks: state.map((track) => ({
+      id: track.id,
+      volume: track.volume,
+      isMuted: track.isMuted,
+      loopDuration: track.loopDuration,
+      hasAudio: Boolean(track.buffer),
+      fx: track.fx,
+    })),
+  };
+
   if (!hasNativeProjectIO) {
-    const payload = {
-      bpm: Number(bpmEl.value),
-      masterVolume: Number(masterVolumeEl.value),
-      tracks: state.map((track) => ({
-        id: track.id,
-        volume: track.volume,
-        isMuted: track.isMuted,
-        loopDuration: track.loopDuration,
-        status: track.status,
-        hasAudio: Boolean(track.buffer),
-      })),
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
-    setStatus('Im Browser nur Settings gespeichert. Für WAV-Projekt-Recall Electron verwenden.');
+    localStorage.setItem(SESSION_KEY, JSON.stringify(fallbackPayload));
+    setStatus('Im Browser nur Settings/FX gespeichert. Für WAV-Projekte Electron verwenden.');
     return;
   }
 
   const result = await window.loopstationFiles.saveProject(createProjectPayload());
   if (result.canceled) return setStatus('Speichern abgebrochen.');
   setStatus(`Projekt gespeichert: ${result.filePath} (${result.writtenFiles} WAV-Dateien)`);
+}
+
+function applyMasterFxFromObject(masterFx = {}) {
+  masterFilterCutoffEl.value = String(masterFx.filterCutoff ?? 16000);
+  masterDelayMixEl.value = String(masterFx.delayMix ?? 0.12);
+  masterDelayTimeEl.value = String(masterFx.delayTime ?? 0.22);
+  masterDelayFeedbackEl.value = String(masterFx.delayFeedback ?? 0.32);
+  applyMasterFxSettings();
+}
+
+function applyTrackUiFromState(track) {
+  if (!track.controls) return;
+  track.controls.volume.value = String(track.volume);
+  track.controls.muteBtn.textContent = track.isMuted ? 'UNMUTE' : 'MUTE';
+  track.controls.filterCutoff.value = String(track.fx.filterCutoff);
+  track.controls.delayMix.value = String(track.fx.delayMix);
 }
 
 async function loadSessionFromProject() {
@@ -290,7 +408,8 @@ async function loadSessionFromProject() {
     const payload = JSON.parse(raw);
     bpmEl.value = payload.bpm || 120;
     masterVolumeEl.value = payload.masterVolume ?? 0.9;
-    if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
+    if (masterChain) masterChain.output.gain.value = Number(masterVolumeEl.value);
+    applyMasterFxFromObject(payload.masterFx || {});
 
     payload.tracks?.forEach((saved, idx) => {
       const track = state[idx];
@@ -298,15 +417,14 @@ async function loadSessionFromProject() {
       track.volume = saved.volume ?? 0.9;
       track.isMuted = Boolean(saved.isMuted);
       track.loopDuration = saved.loopDuration || 0;
-      if (track.controls) {
-        track.controls.volume.value = String(track.volume);
-        track.controls.muteBtn.textContent = track.isMuted ? 'UNMUTE' : 'MUTE';
-      }
+      track.fx = { ...track.fx, ...(saved.fx || {}) };
+      applyTrackUiFromState(track);
+      applyTrackFx(track);
       track.status = saved.hasAudio ? 'STOP (Session)' : 'leer';
       track.refresh?.();
     });
 
-    setStatus('Browser-Modus: nur Settings geladen (keine Audio-Dateien).');
+    setStatus('Browser-Modus: Settings+FX geladen (keine Audio-Dateien).');
     return;
   }
 
@@ -318,7 +436,8 @@ async function loadSessionFromProject() {
 
   bpmEl.value = project.bpm || 120;
   masterVolumeEl.value = project.masterVolume ?? 0.9;
-  if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
+  if (masterChain) masterChain.output.gain.value = Number(masterVolumeEl.value);
+  applyMasterFxFromObject(project.masterFx || {});
 
   for (const track of state) {
     stopTrack(track);
@@ -333,11 +452,10 @@ async function loadSessionFromProject() {
     track.volume = saved.volume ?? 0.9;
     track.isMuted = Boolean(saved.isMuted);
     track.loopDuration = saved.loopDuration || 0;
+    track.fx = { ...track.fx, ...(saved.fx || {}) };
 
-    if (track.controls) {
-      track.controls.volume.value = String(track.volume);
-      track.controls.muteBtn.textContent = track.isMuted ? 'UNMUTE' : 'MUTE';
-    }
+    applyTrackUiFromState(track);
+    applyTrackFx(track);
 
     if (saved.hasAudio && audioMap.has(saved.id)) {
       const wavArr = base64ToArrayBuffer(audioMap.get(saved.id));
@@ -347,15 +465,13 @@ async function loadSessionFromProject() {
     } else {
       refreshTrackStatus(track, 'leer');
     }
-
-    if (track.gain) track.gain.gain.value = track.isMuted ? 0 : track.volume;
   }
 
   setStatus(`Projekt geladen: ${result.filePath}`);
 }
 
 function wireTrackEvents(track, controls) {
-  const { recordBtn, overdubBtn, playBtn, stopBtn, muteBtn, undoBtn, clearBtn, volume } = controls;
+  const { recordBtn, overdubBtn, playBtn, stopBtn, muteBtn, undoBtn, clearBtn, volume, filterCutoff, delayMix } = controls;
 
   recordBtn.addEventListener('click', async () => {
     if (!audioCtx || !mediaStream) return setStatus('Bitte zuerst Audio starten.');
@@ -408,7 +524,7 @@ function wireTrackEvents(track, controls) {
 
   muteBtn.addEventListener('click', () => {
     track.isMuted = !track.isMuted;
-    if (track.gain) track.gain.gain.value = track.isMuted ? 0 : track.volume;
+    applyTrackFx(track);
     muteBtn.textContent = track.isMuted ? 'UNMUTE' : 'MUTE';
     if (track.source) refreshTrackStatus(track, track.isMuted ? 'PLAY (MUTE)' : 'PLAY');
   });
@@ -433,7 +549,17 @@ function wireTrackEvents(track, controls) {
 
   volume.addEventListener('input', (evt) => {
     track.volume = Number(evt.target.value);
-    if (track.gain && !track.isMuted) track.gain.gain.value = track.volume;
+    applyTrackFx(track);
+  });
+
+  filterCutoff.addEventListener('input', (evt) => {
+    track.fx.filterCutoff = Number(evt.target.value);
+    applyTrackFx(track);
+  });
+
+  delayMix.addEventListener('input', (evt) => {
+    track.fx.delayMix = Number(evt.target.value);
+    applyTrackFx(track);
   });
 }
 
@@ -452,9 +578,12 @@ function createTrackUI(track) {
     undoBtn: node.querySelector('[data-action="undo"]'),
     clearBtn: node.querySelector('[data-action="clear"]'),
     volume: node.querySelector('[data-action="volume"]'),
+    filterCutoff: node.querySelector('[data-action="filterCutoff"]'),
+    delayMix: node.querySelector('[data-action="delayMix"]'),
   };
 
   track.controls = controls;
+  applyTrackUiFromState(track);
   title.textContent = `Track ${track.id}`;
 
   track.refresh = () => {
@@ -467,7 +596,6 @@ function createTrackUI(track) {
   };
 
   wireTrackEvents(track, controls);
-
   track.refresh();
   article.dataset.track = track.id;
   tracksEl.appendChild(node);
@@ -476,7 +604,9 @@ function createTrackUI(track) {
 initAudioBtn.addEventListener('click', async () => {
   if (audioCtx && mediaStream) return;
   await startCapture();
-  setStatus('Audio aktiv. Du kannst jetzt aufnehmen, overdubben und als Projekt speichern.');
+  applyMasterFxSettings();
+  state.forEach((track) => applyTrackFx(track));
+  setStatus('Audio aktiv. Du kannst jetzt aufnehmen, overdubben und FX steuern.');
   initAudioBtn.disabled = true;
 });
 
@@ -495,7 +625,7 @@ metronomeBtn.addEventListener('click', () => {
     osc.type = 'square';
     osc.frequency.value = 1200;
     gain.gain.value = 0.06;
-    osc.connect(gain).connect(masterGain);
+    osc.connect(gain).connect(masterChain.input);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.04);
   };
@@ -520,7 +650,11 @@ stopAllBtn.addEventListener('click', () => {
 });
 
 masterVolumeEl.addEventListener('input', () => {
-  if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
+  if (masterChain) masterChain.output.gain.value = Number(masterVolumeEl.value);
+});
+
+[masterFilterCutoffEl, masterDelayMixEl, masterDelayTimeEl, masterDelayFeedbackEl].forEach((control) => {
+  control.addEventListener('input', () => applyMasterFxSettings());
 });
 
 saveSessionBtn.addEventListener('click', async () => {
