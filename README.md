@@ -20,11 +20,27 @@ Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität*
   - `1..5`: Track Play/Stop toggeln
   - `Leertaste`: Stop All
 
-## Lokal als Electron-App starten
+## Development
 ```bash
 npm install
 npm run start
 ```
+
+## Windows Installer / Build-Pipeline (`electron-builder`)
+Die Build-Pipeline ist jetzt konfiguriert über `electron-builder.yml`.
+
+### Verfügbare Build-Kommandos
+```bash
+npm run pack        # entpacktes Build-Verzeichnis
+npm run dist        # erzeugt distributables für die aktuelle Plattform
+npm run dist:win    # erzeugt Windows NSIS Installer + Portable (x64)
+```
+
+### Build-Output
+- Artefakte landen in `dist/`
+- Geplante Targets für Windows:
+  - NSIS Installer (`.exe`)
+  - Portable (`.exe`)
 
 ## Projekt speichern/laden
 - `Session speichern`: schreibt eine Projektdatei (`.json`) plus WAV-Dateien in einen `audio/` Unterordner.

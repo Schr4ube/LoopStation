@@ -1,0 +1,41 @@
+appId: com.loopstation.live
+productName: LoopStation Live
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - "index.html"
+  - "styles.css"
+  - "app.js"
+  - "main.js"
+  - "preload.js"
+  - "package.json"
+  - "README.md"
+
+asar: true
+
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  executableName: LoopStationLive
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: LoopStation Live
+
+portable:
+  artifactName: "${productName}-${version}-portable-${arch}.${ext}"
+

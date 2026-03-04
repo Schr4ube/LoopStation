@@ -3,11 +3,18 @@
   "version": "0.1.0",
   "description": "Local Electron wrapper for LoopStation Live",
   "main": "main.js",
+  "author": "LoopStation Team",
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win nsis portable",
+    "postinstall": "electron-builder install-app-deps"
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
   }
 }
