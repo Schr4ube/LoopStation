@@ -1,6 +1,6 @@
 # LoopStation Live (Electron)
 
-Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt** – jetzt als **lokal laufende Electron-App**.
+Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität als erster Schritt** – als lokal laufende Electron-App.
 
 ## Enthaltene Funktionen
 - 5 unabhängige Tracks
@@ -9,7 +9,10 @@ Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität 
 - BPM-Einstellung + Metronom
 - Lautstärke pro Track + Master Volume
 - Play All / Stop All
-- Session Save/Load (Settings + Track-Status in `localStorage`)
+- **Vollständiger Session Recall in Electron**:
+  - Projektdatei als JSON (z. B. `my-set.json`)
+  - Persistente Audio-Dateien als WAV pro Track (`audio/track-1.wav` ...)
+  - Laden stellt Loops + Mixer-Einstellungen wieder her
 - Keyboard Shortcuts:
   - `1..5`: Track Play/Stop toggeln
   - `Leertaste`: Stop All
@@ -20,19 +23,21 @@ npm install
 npm run start
 ```
 
-## Alternative (Browser)
+## Projekt speichern/laden
+- `Session speichern`: schreibt eine Projektdatei (`.json`) plus WAV-Dateien in einen `audio/` Unterordner.
+- `Session laden`: lädt Projektdatei + WAV-Dateien vollständig zurück.
+
+## Browser-Modus (Fallback)
 ```bash
 python3 -m http.server 8080
 ```
 Dann öffnen: `http://localhost:8080`
 
-## Wichtiger Hinweis
-Session Save/Load speichert aktuell nur **Einstellungen und Status**, nicht die Audio-PCM-Daten der Loops. Für vollständiges Session-Recall wäre ein persistentes Audioformat (z. B. WAV/OPUS + Projektdatei) der nächste Schritt.
+Im Browser ohne Electron werden aus Sicherheitsgründen weiterhin nur Settings über `localStorage` gespeichert (kein WAV-Dateizugriff).
 
 ## Roadmap Richtung RC-505 MK II
 - Sample-genaue Quantisierung und globaler Transport
 - Mehrstufiges Undo/Redo
-- Persistente Audio-Sessions (Import/Export)
 - MIDI Learn + MIDI Clock In/Out
 - Effektketten (Input FX, Track FX, Master FX)
 - Installer/Build-Pipeline für Windows (`electron-builder`)

@@ -19,6 +19,8 @@ let metronomeInterval = null;
 let metronomeOn = false;
 let masterGain;
 
+const hasNativeProjectIO = Boolean(window.loopstationFiles?.saveProject && window.loopstationFiles?.loadProject);
+
 const state = Array.from({ length: trackCount }, (_, index) => ({
   id: index + 1,
   status: 'leer',
@@ -33,6 +35,7 @@ const state = Array.from({ length: trackCount }, (_, index) => ({
   loopDuration: 0,
   isMuted: false,
   refresh: null,
+  controls: null,
 }));
 
 const setStatus = (message) => (statusEl.textContent = message);
@@ -154,15 +157,201 @@ function armRecording(track, mode) {
     refreshTrackStatus(track, 'OD REC');
     setStatus(`Track ${track.id}: Overdub läuft (${track.loopDuration.toFixed(2)}s)...`);
     setTimeout(() => {
-      if (track.recorder?.state === 'recording') {
-        track.recorder.stop();
-      }
+      if (track.recorder?.state === 'recording') track.recorder.stop();
     }, Math.floor(track.loopDuration * 1000));
     return;
   }
 
   refreshTrackStatus(track, 'REC');
   setStatus(`Track ${track.id} nimmt auf... REC erneut drücken zum Stoppen.`);
+}
+
+function encodeWavFromAudioBuffer(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bitsPerSample = 16;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const byteRate = sampleRate * blockAlign;
+  const dataLength = buffer.length * blockAlign;
+
+  const wavBuffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(wavBuffer);
+
+  const writeString = (offset, value) => {
+    for (let i = 0; i < value.length; i++) {
+      view.setUint8(offset + i, value.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataLength, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataLength, true);
+
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += 2;
+    }
+  }
+
+  return wavBuffer;
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function createProjectPayload() {
+  const tracks = state.map((track) => {
+    const hasAudio = Boolean(track.buffer);
+    return {
+      id: track.id,
+      volume: track.volume,
+      isMuted: track.isMuted,
+      loopDuration: track.loopDuration,
+      hasAudio,
+      audioFile: hasAudio ? `track-${track.id}.wav` : null,
+    };
+  });
+
+  const audioFiles = state
+    .filter((track) => track.buffer)
+    .map((track) => ({
+      trackId: track.id,
+      filename: `track-${track.id}.wav`,
+      base64: arrayBufferToBase64(encodeWavFromAudioBuffer(track.buffer)),
+    }));
+
+  return {
+    bpm: Number(bpmEl.value),
+    masterVolume: Number(masterVolumeEl.value),
+    tracks,
+    audioFiles,
+  };
+}
+
+async function saveSessionAsProject() {
+  if (!hasNativeProjectIO) {
+    const payload = {
+      bpm: Number(bpmEl.value),
+      masterVolume: Number(masterVolumeEl.value),
+      tracks: state.map((track) => ({
+        id: track.id,
+        volume: track.volume,
+        isMuted: track.isMuted,
+        loopDuration: track.loopDuration,
+        status: track.status,
+        hasAudio: Boolean(track.buffer),
+      })),
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    setStatus('Im Browser nur Settings gespeichert. Für WAV-Projekt-Recall Electron verwenden.');
+    return;
+  }
+
+  const result = await window.loopstationFiles.saveProject(createProjectPayload());
+  if (result.canceled) return setStatus('Speichern abgebrochen.');
+  setStatus(`Projekt gespeichert: ${result.filePath} (${result.writtenFiles} WAV-Dateien)`);
+}
+
+async function loadSessionFromProject() {
+  if (!audioCtx) {
+    await startCapture();
+    initAudioBtn.disabled = true;
+  }
+
+  if (!hasNativeProjectIO) {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return setStatus('Keine gespeicherte Session gefunden.');
+
+    const payload = JSON.parse(raw);
+    bpmEl.value = payload.bpm || 120;
+    masterVolumeEl.value = payload.masterVolume ?? 0.9;
+    if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
+
+    payload.tracks?.forEach((saved, idx) => {
+      const track = state[idx];
+      if (!track) return;
+      track.volume = saved.volume ?? 0.9;
+      track.isMuted = Boolean(saved.isMuted);
+      track.loopDuration = saved.loopDuration || 0;
+      if (track.controls) {
+        track.controls.volume.value = String(track.volume);
+        track.controls.muteBtn.textContent = track.isMuted ? 'UNMUTE' : 'MUTE';
+      }
+      track.status = saved.hasAudio ? 'STOP (Session)' : 'leer';
+      track.refresh?.();
+    });
+
+    setStatus('Browser-Modus: nur Settings geladen (keine Audio-Dateien).');
+    return;
+  }
+
+  const result = await window.loopstationFiles.loadProject();
+  if (result.canceled) return setStatus('Laden abgebrochen.');
+
+  const { project, audioFiles } = result;
+  const audioMap = new Map(audioFiles.map((f) => [f.trackId, f.base64]));
+
+  bpmEl.value = project.bpm || 120;
+  masterVolumeEl.value = project.masterVolume ?? 0.9;
+  if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
+
+  for (const track of state) {
+    stopTrack(track);
+    track.previousBuffer = null;
+    track.buffer = null;
+  }
+
+  for (const saved of project.tracks || []) {
+    const track = state[saved.id - 1];
+    if (!track) continue;
+
+    track.volume = saved.volume ?? 0.9;
+    track.isMuted = Boolean(saved.isMuted);
+    track.loopDuration = saved.loopDuration || 0;
+
+    if (track.controls) {
+      track.controls.volume.value = String(track.volume);
+      track.controls.muteBtn.textContent = track.isMuted ? 'UNMUTE' : 'MUTE';
+    }
+
+    if (saved.hasAudio && audioMap.has(saved.id)) {
+      const wavArr = base64ToArrayBuffer(audioMap.get(saved.id));
+      const decoded = await audioCtx.decodeAudioData(wavArr.slice(0));
+      track.buffer = decoded;
+      refreshTrackStatus(track, 'STOP (Projekt)');
+    } else {
+      refreshTrackStatus(track, 'leer');
+    }
+
+    if (track.gain) track.gain.gain.value = track.isMuted ? 0 : track.volume;
+  }
+
+  setStatus(`Projekt geladen: ${result.filePath}`);
 }
 
 function wireTrackEvents(track, controls) {
@@ -203,7 +392,6 @@ function wireTrackEvents(track, controls) {
       const overdubFixed = fitBufferToDuration(overdubRaw, track.loopDuration);
       track.buffer = mixBuffers(track.previousBuffer, overdubFixed);
       playTrack(track);
-      refreshTrackStatus(track, track.isMuted ? 'PLAY (MUTE)' : 'PLAY');
       setStatus(`Track ${track.id}: Overdub angewendet.`);
     };
   });
@@ -266,6 +454,7 @@ function createTrackUI(track) {
     volume: node.querySelector('[data-action="volume"]'),
   };
 
+  track.controls = controls;
   title.textContent = `Track ${track.id}`;
 
   track.refresh = () => {
@@ -287,7 +476,7 @@ function createTrackUI(track) {
 initAudioBtn.addEventListener('click', async () => {
   if (audioCtx && mediaStream) return;
   await startCapture();
-  setStatus('Audio aktiv. Du kannst jetzt aufnehmen, overdubben und die Session speichern.');
+  setStatus('Audio aktiv. Du kannst jetzt aufnehmen, overdubben und als Projekt speichern.');
   initAudioBtn.disabled = true;
 });
 
@@ -334,43 +523,20 @@ masterVolumeEl.addEventListener('input', () => {
   if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
 });
 
-saveSessionBtn.addEventListener('click', () => {
-  const payload = {
-    bpm: Number(bpmEl.value),
-    masterVolume: Number(masterVolumeEl.value),
-    tracks: state.map((track) => ({
-      id: track.id,
-      volume: track.volume,
-      isMuted: track.isMuted,
-      loopDuration: track.loopDuration,
-      status: track.status,
-      hasAudio: Boolean(track.buffer),
-    })),
-  };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
-  setStatus('Session-Einstellungen gespeichert (Audio selbst nicht persistiert).');
+saveSessionBtn.addEventListener('click', async () => {
+  try {
+    await saveSessionAsProject();
+  } catch (error) {
+    setStatus(`Speichern fehlgeschlagen: ${error.message}`);
+  }
 });
 
-loadSessionBtn.addEventListener('click', () => {
-  const raw = localStorage.getItem(SESSION_KEY);
-  if (!raw) return setStatus('Keine gespeicherte Session gefunden.');
-
-  const payload = JSON.parse(raw);
-  bpmEl.value = payload.bpm || 120;
-  masterVolumeEl.value = payload.masterVolume ?? 0.9;
-  if (masterGain) masterGain.gain.value = Number(masterVolumeEl.value);
-
-  payload.tracks?.forEach((saved, idx) => {
-    const track = state[idx];
-    if (!track) return;
-    track.volume = saved.volume ?? 0.9;
-    track.isMuted = Boolean(saved.isMuted);
-    track.loopDuration = saved.loopDuration || 0;
-    track.status = saved.hasAudio ? 'STOP (Session)' : 'leer';
-    track.refresh?.();
-  });
-
-  setStatus('Session-Einstellungen geladen. Hinweis: Audio-Loops müssen neu aufgenommen werden.');
+loadSessionBtn.addEventListener('click', async () => {
+  try {
+    await loadSessionFromProject();
+  } catch (error) {
+    setStatus(`Laden fehlgeschlagen: ${error.message}`);
+  }
 });
 
 document.addEventListener('keydown', (evt) => {
