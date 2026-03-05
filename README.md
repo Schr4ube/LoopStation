@@ -1,24 +1,26 @@
-# LoopStation Live (Electron)
+# Live LoopStation (Electron)
 
-Erweiterter Prototyp einer 5-Track-Loopstation mit Fokus auf **Live-Stabilität** – als lokal laufende Electron-App.
+Prototyp for a 5-Track-Loopstation with a fokus on **Live-Stability** – as a lokal running Electron-App.
 
-## Enthaltene Funktionen
-- 5 unabhängige Tracks
-- Audio aktivieren (Mikrofon)
-- Pro Track: Record, Overdub, Play, Stop, Mute, Undo, Clear
-- BPM-Einstellung + Metronom
-- Lautstärke pro Track + Master Volume
+![Current_Image](/images/ls_current.png)
+
+## Inculded
+- 5 idepended tracks
+- activate audio (mikrofon)
+- Per Track: Record, Overdub, Play, Stop, Mute, Undo, Clear
+- BPM-Settings + Metronom
+- Volume per track + major volume
 - **Effektketten**:
-  - Pro Track: Filter + Delay-Mix
+  - Per Track: Filter + Delay-Mix
   - Master: Filter, Delay-Mix, Delay-Time, Feedback
 - Play All / Stop All
-- Vollständiger Session Recall in Electron:
-  - Projektdatei als JSON
-  - Persistente WAV-Dateien pro Track (`audio/track-1.wav` ...)
-  - Laden stellt Loops + Mixer- und FX-Einstellungen wieder her
+- Full Session Recall in Electron:
+  - Projektfile as JSON
+  - Persistente WAV-Files per Track (`audio/track-1.wav` ...)
+  - Loading recreates Loops + Mixer- and FX-Settings as saved
 - Keyboard Shortcuts:
-  - `1..5`: Track Play/Stop toggeln
-  - `Leertaste`: Stop All
+  - `1..5`: Track Play/Stop toggel
+  - `Space`: Stop All
 
 ## Development
 ```bash
@@ -27,29 +29,29 @@ npm run start
 ```
 
 ## Windows Installer / Build-Pipeline (`electron-builder`)
-Die Build-Pipeline ist jetzt konfiguriert über `electron-builder.yml`.
+Build-Pipeline is configured via `electron-builder.yml`.
 
-### Verfügbare Build-Kommandos
+## Available build commands
 ```bash
-npm run pack        # entpacktes Build-Verzeichnis
-npm run dist        # erzeugt distributables für die aktuelle Plattform
-npm run dist:win    # erzeugt Windows NSIS Installer + Portable (x64)
+npm run pack        # unpacked build directory
+npm run dist        # generates distributables for the current platform
+npm run dist:win    # generates Windows NSIS Installer + Portable (x64)
 ```
 
-### Build-Output
-- Artefakte landen in `dist/`
-- Geplante Targets für Windows:
-  - NSIS Installer (`.exe`)
+### Build output
+- Artifacts are stored in `dist/`
+- Planned targets for Windows:
+  - NSIS installer (`.exe`)
   - Portable (`.exe`)
 
-## Projekt speichern/laden
-- `Session speichern`: schreibt eine Projektdatei (`.json`) plus WAV-Dateien in einen `audio/` Unterordner.
-- `Session laden`: lädt Projektdatei + WAV-Dateien vollständig zurück.
+## Save/load project
+- `Save session`: writes a project file (`.json`) plus WAV files to an `audio/` subfolder.
+- `Load session`: loads the project file + WAV files back in their entirety.
 
 ## Browser-Modus (Fallback)
 ```bash
 python3 -m http.server 8080
 ```
-Dann öffnen: `http://localhost:8080`
+Then open: `http://localhost:8080`
 
-Im Browser ohne Electron werden nur Settings inkl. FX in `localStorage` gespeichert (kein WAV-Dateizugriff).
+In browsers without Electron, only settings including FX are stored in `localStorage` (no WAV file access).
