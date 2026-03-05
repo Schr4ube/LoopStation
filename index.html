@@ -12,25 +12,25 @@
       <header class="topbar glass">
         <h1>LoopStation Live</h1>
         <div class="transport">
-          <button id="initAudio" class="primary">Audio starten</button>
+          <button id="initAudio" class="primary">Start Audio</button>
           <label>
             BPM
             <input id="bpm" type="number" value="120" min="60" max="200" />
           </label>
           <button id="metronome">Metronom: Aus</button>
-          <button id="playAll">Alle Play</button>
-          <button id="stopAll">Alle Stop</button>
+          <button id="playAll">Play All</button>
+          <button id="stopAll">Stop All</button>
           <label>
             Master
             <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="0.9" />
           </label>
-          <button id="saveSession">Session speichern</button>
-          <button id="loadSession">Session laden</button>
+          <button id="saveSession">Save Session</button>
+          <button id="loadSession">Load Session</button>
         </div>
       </header>
 
       <section class="master-fx glass">
-        <h3>Master FX Kette</h3>
+        <h3>Master FX chains</h3>
         <label>Filter Cutoff
           <input id="masterFilterCutoff" type="range" min="200" max="16000" step="10" value="16000" />
         </label>
@@ -45,12 +45,12 @@
         </label>
       </section>
 
-      <section id="status" class="status glass">Bereit. Audio starten und Mikrofon freigeben.</section>
+      <section id="status" class="status glass">Ready. Start audio and enable microphone.</section>
 
       <section id="tracks" class="track-grid"></section>
 
       <footer class="glass footer">
-        <p>Mit FX-Ketten: pro Track Filter+Delay und globale Master FX-Kette inklusive Session-Recall.</p>
+        <p>With FX chains: filter+delay per track and global master FX chain including session recall.</p>
       </footer>
     </main>
 
@@ -58,7 +58,7 @@
       <article class="track glass">
         <header>
           <h2></h2>
-          <span class="pill">Leer</span>
+          <span class="pill">empty</span>
         </header>
         <div class="track-controls">
           <button data-action="record" class="danger">REC</button>
@@ -77,7 +77,7 @@
             <input data-action="delayMix" type="range" min="0" max="0.7" step="0.01" value="0.08" />
           </label>
         </div>
-        <label class="volume-label">Lautstärke
+        <label class="volume-label">Volume
           <input data-action="volume" type="range" min="0" max="1" step="0.01" value="0.9" />
         </label>
       </article>

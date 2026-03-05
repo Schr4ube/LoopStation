@@ -22,7 +22,7 @@ function createWindow() {
 
 async function writeProject(payload) {
   const { canceled, filePath } = await dialog.showSaveDialog({
-    title: 'LoopStation Projekt speichern',
+    title: 'Save LoopStation project',
     defaultPath: 'loopstation-project.json',
     filters: [{ name: 'LoopStation Project', extensions: ['json'] }],
   });
@@ -56,7 +56,7 @@ async function writeProject(payload) {
 
 async function readProject() {
   const { canceled, filePaths } = await dialog.showOpenDialog({
-    title: 'LoopStation Projekt laden',
+    title: 'Load LoopStation project',
     properties: ['openFile'],
     filters: [{ name: 'LoopStation Project', extensions: ['json'] }],
   });

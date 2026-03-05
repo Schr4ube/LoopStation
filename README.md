@@ -10,7 +10,7 @@ Prototyp for a 5-Track-Loopstation with a fokus on **Live-Stability** – as a l
 - Per Track: Record, Overdub, Play, Stop, Mute, Undo, Clear
 - BPM-Settings + Metronom
 - Volume per track + major volume
-- **Effektketten**:
+- **Effects**:
   - Per Track: Filter + Delay-Mix
   - Master: Filter, Delay-Mix, Delay-Time, Feedback
 - Play All / Stop All
