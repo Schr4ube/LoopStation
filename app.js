@@ -28,7 +28,7 @@ const hasNativeProjectIO = Boolean(window.loopstationFiles?.saveProject && windo
 
 const state = Array.from({ length: trackCount }, (_, index) => ({
   id: index + 1,
-  status: 'leer',
+  status: 'empty',
   chunks: [],
   recorder: null,
   startedAt: 0,
@@ -250,7 +250,7 @@ function armRecording(track, mode) {
 
   if (mode === 'overdub') {
     refreshTrackStatus(track, 'OD REC');
-    setStatus(`Track ${track.id}: Overdub läuft (${track.loopDuration.toFixed(2)}s)...`);
+    setStatus(`Track ${track.id}: Overdub runs (${track.loopDuration.toFixed(2)}s)...`);
     setTimeout(() => {
       if (track.recorder?.state === 'recording') track.recorder.stop();
     }, Math.floor(track.loopDuration * 1000));
@@ -258,7 +258,7 @@ function armRecording(track, mode) {
   }
 
   refreshTrackStatus(track, 'REC');
-  setStatus(`Track ${track.id} nimmt auf... REC erneut drücken zum Stoppen.`);
+  setStatus(`Track ${track.id} is recording ... press REC again to Stop recording.`);
 }
 
 function encodeWavFromAudioBuffer(buffer) {
@@ -370,13 +370,13 @@ async function saveSessionAsProject() {
 
   if (!hasNativeProjectIO) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(fallbackPayload));
-    setStatus('Im Browser nur Settings/FX gespeichert. Für WAV-Projekte Electron verwenden.');
+    setStatus('Only saved in Settings/FX in the browser. Use Electron for WAV projects.');
     return;
   }
 
   const result = await window.loopstationFiles.saveProject(createProjectPayload());
-  if (result.canceled) return setStatus('Speichern abgebrochen.');
-  setStatus(`Projekt gespeichert: ${result.filePath} (${result.writtenFiles} WAV-Dateien)`);
+  if (result.canceled) return setStatus('Saving canceled.');
+  setStatus(`Project Saved: ${result.filePath} (${result.writtenFiles} WAV-Files)`);
 }
 
 function applyMasterFxFromObject(masterFx = {}) {
@@ -403,7 +403,7 @@ async function loadSessionFromProject() {
 
   if (!hasNativeProjectIO) {
     const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return setStatus('Keine gespeicherte Session gefunden.');
+    if (!raw) return setStatus('No saved session found.');
 
     const payload = JSON.parse(raw);
     bpmEl.value = payload.bpm || 120;
@@ -420,16 +420,16 @@ async function loadSessionFromProject() {
       track.fx = { ...track.fx, ...(saved.fx || {}) };
       applyTrackUiFromState(track);
       applyTrackFx(track);
-      track.status = saved.hasAudio ? 'STOP (Session)' : 'leer';
+      track.status = saved.hasAudio ? 'STOP (Session)' : 'empty';
       track.refresh?.();
     });
 
-    setStatus('Browser-Modus: Settings+FX geladen (keine Audio-Dateien).');
+    setStatus('Browser mode: Settings+FX loaded (no audio files).');
     return;
   }
 
   const result = await window.loopstationFiles.loadProject();
-  if (result.canceled) return setStatus('Laden abgebrochen.');
+  if (result.canceled) return setStatus('Loading canceled.');
 
   const { project, audioFiles } = result;
   const audioMap = new Map(audioFiles.map((f) => [f.trackId, f.base64]));
@@ -461,24 +461,24 @@ async function loadSessionFromProject() {
       const wavArr = base64ToArrayBuffer(audioMap.get(saved.id));
       const decoded = await audioCtx.decodeAudioData(wavArr.slice(0));
       track.buffer = decoded;
-      refreshTrackStatus(track, 'STOP (Projekt)');
+      refreshTrackStatus(track, 'STOP (Project)');
     } else {
-      refreshTrackStatus(track, 'leer');
+      refreshTrackStatus(track, 'empty');
     }
   }
 
-  setStatus(`Projekt geladen: ${result.filePath}`);
+  setStatus(`Project loaded: ${result.filePath}`);
 }
 
 function wireTrackEvents(track, controls) {
   const { recordBtn, overdubBtn, playBtn, stopBtn, muteBtn, undoBtn, clearBtn, volume, filterCutoff, delayMix } = controls;
 
   recordBtn.addEventListener('click', async () => {
-    if (!audioCtx || !mediaStream) return setStatus('Bitte zuerst Audio starten.');
+    if (!audioCtx || !mediaStream) return setStatus('Please start Audio first.');
 
     if (track.recorder?.state === 'recording') {
       track.recorder.stop();
-      refreshTrackStatus(track, 'Verarbeite...');
+      refreshTrackStatus(track, 'Processing...');
       return;
     }
 
@@ -490,14 +490,14 @@ function wireTrackEvents(track, controls) {
       track.loopDuration = loopDuration;
       track.buffer = fitBufferToDuration(rawBuffer, track.loopDuration);
       refreshTrackStatus(track, `STOP (${bars} Bar)`);
-      setStatus(`Track ${track.id} aufgenommen: ${bars} Takt(e), ${track.loopDuration.toFixed(2)}s`);
+      setStatus(`Track ${track.id} recorded: ${bars} Takt(e), ${track.loopDuration.toFixed(2)}s`);
     };
   });
 
   overdubBtn.addEventListener('click', async () => {
-    if (!audioCtx || !mediaStream) return setStatus('Bitte zuerst Audio starten.');
-    if (!track.buffer || !track.loopDuration) return setStatus(`Track ${track.id}: erst REC aufnehmen.`);
-    if (track.recorder?.state === 'recording') return setStatus(`Track ${track.id}: Aufnahme läuft bereits.`);
+    if (!audioCtx || !mediaStream) return setStatus('Please start Audio first.');
+    if (!track.buffer || !track.loopDuration) return setStatus(`Track ${track.id}: record REC first.`);
+    if (track.recorder?.state === 'recording') return setStatus(`Track ${track.id}: Recording is already in progress.`);
 
     track.previousBuffer = track.buffer;
     armRecording(track, 'overdub');
@@ -508,18 +508,18 @@ function wireTrackEvents(track, controls) {
       const overdubFixed = fitBufferToDuration(overdubRaw, track.loopDuration);
       track.buffer = mixBuffers(track.previousBuffer, overdubFixed);
       playTrack(track);
-      setStatus(`Track ${track.id}: Overdub angewendet.`);
+      setStatus(`Track ${track.id}: Overdub applied.`);
     };
   });
 
   playBtn.addEventListener('click', () => {
-    if (!track.buffer) return setStatus(`Track ${track.id} ist leer.`);
+    if (!track.buffer) return setStatus(`Track ${track.id} is empty.`);
     playTrack(track);
   });
 
   stopBtn.addEventListener('click', () => {
     stopTrack(track);
-    refreshTrackStatus(track, track.buffer ? 'STOP' : 'leer');
+    refreshTrackStatus(track, track.buffer ? 'STOP' : 'empty');
   });
 
   muteBtn.addEventListener('click', () => {
@@ -530,12 +530,12 @@ function wireTrackEvents(track, controls) {
   });
 
   undoBtn.addEventListener('click', () => {
-    if (!track.previousBuffer) return setStatus(`Track ${track.id}: nichts zum Undo.`);
+    if (!track.previousBuffer) return setStatus(`Track ${track.id}: nothing to Undo.`);
     track.buffer = track.previousBuffer;
     track.previousBuffer = null;
     if (track.source) playTrack(track);
     refreshTrackStatus(track, track.source ? 'PLAY' : 'STOP');
-    setStatus(`Track ${track.id}: letzter Schritt rückgängig.`);
+    setStatus(`Track ${track.id}: undo last step.`);
   });
 
   clearBtn.addEventListener('click', () => {
@@ -544,7 +544,7 @@ function wireTrackEvents(track, controls) {
     track.buffer = null;
     track.chunks = [];
     track.loopDuration = 0;
-    refreshTrackStatus(track, 'leer');
+    refreshTrackStatus(track, 'empty');
   });
 
   volume.addEventListener('input', (evt) => {
@@ -606,15 +606,15 @@ initAudioBtn.addEventListener('click', async () => {
   await startCapture();
   applyMasterFxSettings();
   state.forEach((track) => applyTrackFx(track));
-  setStatus('Audio aktiv. Du kannst jetzt aufnehmen, overdubben und FX steuern.');
+  setStatus('Audio active. You can now record, overdub, and control FX.');
   initAudioBtn.disabled = true;
 });
 
 metronomeBtn.addEventListener('click', () => {
-  if (!audioCtx) return setStatus('Bitte zuerst Audio starten.');
+  if (!audioCtx) return setStatus('Please start audio first.');
 
   metronomeOn = !metronomeOn;
-  metronomeBtn.textContent = `Metronom: ${metronomeOn ? 'An' : 'Aus'}`;
+  metronomeBtn.textContent = `Metronom: ${metronomeOn ? 'On' : 'Off'}`;
 
   clearInterval(metronomeInterval);
   if (!metronomeOn) return;
@@ -635,10 +635,10 @@ metronomeBtn.addEventListener('click', () => {
 });
 
 playAllBtn.addEventListener('click', () => {
-  if (!audioCtx) return setStatus('Bitte zuerst Audio starten.');
+  if (!audioCtx) return setStatus('Please start audio first.');
   const syncTime = audioCtx.currentTime + 0.03;
   state.forEach((track) => track.buffer && playTrack(track, syncTime));
-  setStatus('Alle Tracks gestartet.');
+  setStatus('All Tracks started.');
 });
 
 stopAllBtn.addEventListener('click', () => {
@@ -646,7 +646,7 @@ stopAllBtn.addEventListener('click', () => {
     stopTrack(track);
     if (track.buffer) refreshTrackStatus(track, 'STOP');
   });
-  setStatus('Alle Tracks gestoppt.');
+  setStatus('All Tracks stopped.');
 });
 
 masterVolumeEl.addEventListener('input', () => {
@@ -661,7 +661,7 @@ saveSessionBtn.addEventListener('click', async () => {
   try {
     await saveSessionAsProject();
   } catch (error) {
-    setStatus(`Speichern fehlgeschlagen: ${error.message}`);
+    setStatus(`Failed to save: ${error.message}`);
   }
 });
 
@@ -669,7 +669,7 @@ loadSessionBtn.addEventListener('click', async () => {
   try {
     await loadSessionFromProject();
   } catch (error) {
-    setStatus(`Laden fehlgeschlagen: ${error.message}`);
+    setStatus(`Failed to load: ${error.message}`);
   }
 });
 
@@ -689,7 +689,7 @@ document.addEventListener('keydown', (evt) => {
 
     if (track.source) {
       stopTrack(track);
-      refreshTrackStatus(track, track.buffer ? 'STOP' : 'leer');
+      refreshTrackStatus(track, track.buffer ? 'STOP' : 'empty');
     } else if (track.buffer) {
       playTrack(track);
     }
