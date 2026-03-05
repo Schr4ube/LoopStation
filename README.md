@@ -2,7 +2,7 @@
 
 Prototyp for a 5-Track-Loopstation with a fokus on **Live-Stability** – as a lokal running Electron-App.
 
-![Current_Image](\images\ls_current.png)
+![Current_Image](/images/ls_current.png)
 
 ## Inculded
 - 5 idepended tracks
